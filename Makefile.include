@@ -1,0 +1,186 @@
+TOP_DIR       := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+STM32LIB_DIR  = Libs/Stm32Libs
+ROSLIB_DIR    = Libs/RosLibs
+
+ROS = USE
+#ROS  = UNUSE
+
+# Uncomment the appropriate device type and startup file
+#DEVICE_TYPE = STM32F10X_LD
+#STARTUP_FILE = stm32f10x_ld
+#DEVICE_TYPE = STM32F10X_MD
+#STARTUP_FILE = stm32f10x_md
+DEVICE_TYPE = STM32F10X_HD
+STARTUP_FILE = stm32f10x_hd
+#DEVICE_TYPE = STM32F10X_LD_VL
+#STARTUP_FILE = stm32f10x_ld_vl
+#DEVICE_TYPE = STM32F10X_MD_VL
+#STARTUP_FILE = stm32f10x_md_vl
+#DEVICE_TYPE = STM32F10X_HD_VL
+#STARTUP_FILE = stm32f10x_hd_vl
+#DEVICE_TYPE = STM32F10X_XL
+#STARTUP_FILE = stm32f10x_xl
+#DEVICE_TYPE = STM32F10X_CL
+#STARTUP_FILE = stm32f10x_cl
+
+# # Set the external clock frequency
+HSE_VALUE = 8000000L
+#
+USE_STDPERIPH_DRIVER = -DUSE_STDPERIPH_DRIVER
+
+export DEFINES
+
+PREFIX ?= arm-none-eabi-
+CXX     = $(PREFIX)g++
+CC      = $(PREFIX)gcc
+LD      = $(PREFIX)g++
+OBJCOPY = $(PREFIX)objcopy
+OBJDUMP = $(PREFIX)objdump
+AR      = $(PREFIX)ar
+FLASH   = st-flash
+OPENOCD = openocd
+
+#OPTFLAGS ?= -O1
+DBGFLAGS ?= -g -DNDEBUG
+DEFINES = -D$(DEVICE_TYPE) -DHSE_VALUE=$(HSE_VALUE) $(USE_STDPERIPH_DRIVER)
+
+#CFLAGS   += $(OPTFLAGS) 
+CFLAGS   += $(DBGFLAGS) \
+			$(DEFINES) \
+            -W \
+            -Wall \
+            -Wshadow \
+            -Wwrite-strings \
+            -Winline \
+            -fno-exceptions \
+            -fvisibility=internal \
+            -ffunction-sections \
+			-finline \
+			-finline-functions-called-once \
+            -fdata-sections \
+			-fno-stack-protector \
+            -mcpu=cortex-m3 \
+            -mthumb \
+            -msoft-float \
+            -DSTM32F1 \
+            -I$(TOP_DIR) \
+            -I$(TOP_DIR)Bsp \
+            -I$(TOP_DIR)Driver \
+            -I$(TOP_DIR)/$(STM32LIB_DIR)/STM32F10x_StdPeriph_Driver/inc \
+            -I$(TOP_DIR)/$(STM32LIB_DIR)/STM32_USB-FS-Device_Driver/inc \
+            -I$(TOP_DIR)/$(STM32LIB_DIR)/STM32F10x_StdPeriph_Driver \
+            -I$(TOP_DIR)/$(STM32LIB_DIR)/STM32_USB-FS-Device_Driver \
+            -I$(TOP_DIR)/$(STM32LIB_DIR)/CMSIS_CM3 \
+
+ifeq ($(ROS), USE)
+	CFLAGS += -I$(TOP_DIR)/$(ROSLIB_DIR)/
+endif
+
+ifdef APPVER
+CFLAGS   += -DAPPVER=$(APPVER)
+LDSCRIPT  = $(TOP_DIR)/stm32f10x_$(APPVER).ld
+else
+LDSCRIPT  = $(TOP_DIR)/stm32f10x.ld
+endif
+
+LDFLAGS  += --static \
+            -Wl,--start-group \
+            -lc \
+			-lstdc++ \
+            -lgcc \
+            -lnosys \
+            -Wl,--end-group \
+            -L$(TOP_DIR) \
+            -L$(TOP_DIR)/Bsp \
+            -L$(TOP_DIR)/Driver \
+            -L$(TOP_DIR)/$(STM32LIB_DIR) \
+            -L$(TOP_DIR)/$(STM32LIB_DIR)/STM32F10x_StdPeriph_Driver \
+            -L$(TOP_DIR)/$(STM32LIB_DIR)/STM32_USB-FS-Device_Driver \
+            -T$(LDSCRIPT) \
+            -nostartfiles \
+		   	-specs=nosys.specs \
+            -Wl,--gc-sections \
+            -mthumb \
+            -mfix-cortex-m3-ldrd \
+            -msoft-float
+
+ifeq ($(ROS), USE)
+LDFLAGS += -L$(TOP_DIR)/$(ROSLIB_DIR)
+endif
+
+TARGET_ARCH = -mcpu=cortex-m3 -mthumb
+AS = $(CC) -x assembler-with-cpp -c $(TARGET_ARCH)
+
+
+ifeq ($(ROS), USE)
+all: stm32libs roslibs $(NAME).bin
+stm32libs:
+	$(MAKE) -C Libs/Stm32Libs
+roslibs:
+	$(MAKE) -C Libs/RosLibs
+else
+all: stm32libs $(NAME).bin
+stm32libs:
+	$(MAKE) -C Libs/Stm32Libs
+endif
+
+flash: $(NAME).bin
+	$(FLASH) --reset write $(NAME).bin 0x8000000
+
+flash2: $(NAME).hex
+	$(OPENOCD) -f board/stm32f4discovery.cfg \
+		-c "init" \
+		-c "reset init" \
+		-c "stm32f2x mass_erase 0" \
+		-c "flash write_image $(NAME).hex" \
+		-c "reset" \
+		-c "shutdown"
+
+$(NAME).bin: $(NAME).elf
+	$(OBJCOPY) -Obinary $(NAME).elf $(NAME).bin
+
+$(NAME).hex: $(NAME).elf
+	$(OBJCOPY) -Oihex $(NAME).elf $(NAME).hex
+
+$(NAME).srec: $(NAME).elf
+	$(OBJCOPY) -Osrec $(NAME).elf $(NAME).srec
+
+$(NAME).list: $(NAME).elf
+	$(OBJDUMP) -S $(NAME).elf > $(NAME).list
+
+ifeq ($(ROS), USE)
+$(NAME).elf: $(OBJS) $(LDSCRIPT) $(TOP_DIR)/$(STM32LIB_DIR)/libstm32f1.a $(TOP_DIR)/$(ROSLIB_DIR)/libros.a
+	$(LD) -o $(NAME).elf $(OBJS) -lstm32f1 -lros $(LDFLAGS) $(CFLAGS)
+else 
+$(NAME).elf: $(OBJS) $(LDSCRIPT) $(TOP_DIR)/$(STM32LIB_DIR)/libstm32f1.a
+	$(LD) -o $(NAME).elf $(OBJS) -lstm32f1 $(LDFLAGS) $(CFLAGS)
+endif
+
+
+%.o: %.c Makefile
+	$(CC) $(CFLAGS) -o $@ -c $< 
+
+%.o: %.cpp Makefile
+	$(CXX) $(CFLAGS) -o $@ -c $< 
+
+%.small.o: %.cpp Makefile
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+cleanall:
+	rm -f $(OBJS)
+	rm -f *.a
+	rm -f *.bin
+	rm -f *.d
+	rm -f *.elf
+	rm -f *.hex
+	rm -f *.list
+	rm -f *.log
+	rm -f *.srec
+	rm -f $(TOP_DIR)/$(STM32LIB_DIR)/*.a
+	rm -f $(TOP_DIR)/$(STM32LIB_DIR)/STM32_USB-FS-Device_Driver/src/*.o
+	rm -f $(TOP_DIR)/$(STM32LIB_DIR)/STM32_USB-FS-Device_Driver/src/*.o
+	rm -f $(TOP_DIR)/$(STM32LIB_DIR)/CMSIS_CM3/*.o
+	rm -f $(TOP_DIR)/$(ROSLIB_DIR)/*.o
+	rm -f $(TOP_DIR)/$(ROSLIB_DIR)/*.a
+
+

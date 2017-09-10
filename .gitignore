@@ -1,0 +1,11 @@
+*.a
+*.o
+*.bin
+*.hex
+*.log
+*.elf
+*.srec
+*.list
+*.d
+*.out
+tags
