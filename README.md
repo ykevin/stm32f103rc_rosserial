@@ -11,7 +11,7 @@ $make
 $cd build/Release  
 $sudo make install
 * Programmer firmware
-$cd stm32f103rc_rosserial  
+> $cd stm32f103rc_rosserial  
 $make  
 $make install
 
@@ -24,5 +24,7 @@ sudo stm32flash -w main.bin -v -g 0x0 /dev/ttyUSB0 -b 115200
 
 * 2.use python scprit
 > ./ISP/stm32loader.py -w -p /dev/ttyUSB0 -b 115200 main.bin
+
+#### User Manual 
 
 #### QQ : 130486387
