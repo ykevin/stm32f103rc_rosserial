@@ -25,6 +25,6 @@ sudo stm32flash -w main.bin -v -g 0x0 /dev/ttyUSB0 -b 115200
 * 2.use python scprit
 > ./ISP/stm32loader.py -w -p /dev/ttyUSB0 -b 115200 main.bin
 
-#### User Manual 
+#### Complete User Manual to UserManual Folder
 
-#### QQ : 130486387
+#### QQ Group: 130486387
