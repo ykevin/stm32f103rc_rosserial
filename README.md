@@ -1,11 +1,19 @@
-## Stm32Module 
-> This is stm32 robot 2wd moudle driver bsp  
-1. motor driver  
-2. encoder driver  
-3. servo driver  
-4. serial driver to ros  
-5. sonar driver  
-6. led driver
+## stm32f103rc_rosserial bsp for ros node communication
+========================================================
+
+#### How to build stm32f103rc_rosserial?
+* Install Ubuntu16.04 package
+> $sudo apt-get install -y git build-essential gcc-arm-none-eabi libstdc++-arm-none-eabi-newlib  libusb-1.0-0-dev  
+* Install st-link driver
+> $git clone https://github.com/texane/stlink.git  
+$cd stlink  
+$make  
+$cd build/Release  
+$sudo make install
+* Programmer firmware
+$cd stm32f103rc_rosserial  
+$make  
+$make install
 
 #### stm32 ISP method
 
@@ -17,4 +25,4 @@ sudo stm32flash -w main.bin -v -g 0x0 /dev/ttyUSB0 -b 115200
 * 2.use python scprit
 > ./ISP/stm32loader.py -w -p /dev/ttyUSB0 -b 115200 main.bin
 
-
+#### QQ : 130486387
