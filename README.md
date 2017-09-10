@@ -1,5 +1,4 @@
 ## stm32f103rc_rosserial bsp for ros node communication
-========================================================
 
 #### How to build stm32f103rc_rosserial?
 * Install Ubuntu16.04 package
@@ -13,7 +12,7 @@ $sudo make install
 * Programmer firmware
 > $cd stm32f103rc_rosserial  
 $make  
-$make install
+$make flash
 
 #### stm32 ISP method
 
